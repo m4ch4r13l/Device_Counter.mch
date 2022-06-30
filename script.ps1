@@ -1,10 +1,10 @@
-﻿#Script para detectar dispositivos y contar las veces que se ha conectado
+#Script para detectar dispositivos y contar las veces que se ha conectado
 
 #Escondiendo ventana del PowerShell
-PowerShell.exe -windowstyle hidden{
+#PowerShell.exe -windowstyle hidden{
 
 #declarando las variables
-$conect = 0
+$connect = 0
 $inirialConnect = 0
 Add-Type -AssemblyName PresentationFramework
 
@@ -18,14 +18,14 @@ function connect
         if($LINE -eq "    Name: Mouse compatible con HID")
         {
             #Comprobando si el dispositivo ha sido detectado anteriormente
-            if($conect -eq 0)
+            if($global:connect -eq 0)
             {
                 #Ejecutando la funcion "Contador"
-                Counter
+                CounterWTBT
                 Write-Output "Device Conect $LINE"
 
                 #Cambiando el valor de $conect 
-                $global:conect  = 1
+                $global:connect  = 1
             }
             else
             {
@@ -33,21 +33,91 @@ function connect
             }
         }
     }
-    if ($conect -eq 0)
+    if ($global:connect -eq 0)
     {
         Write-Output "Device is not connected"
     }
 }
 
-function Counter
+function CounterWTBT
 {
-    [int]$counter = 0
 
-    $counter = Get-Content "counter.txt"
+    $counterResp = Get-Content "Counter WTBT.txt"
+    Set-Content -Path "Counter WTBT RESP.txt" -Value $counterResp
 
-    $counterSuma = $counter + 1
+    $counterFlexTXT  = Get-Content "Counter WTBT.txt" | Select -First 2
+    $counterTypeCTXT = Get-Content "Counter WTBT.txt" | Select -First 3
+    $counterCableTXT = Get-Content "Counter WTBT.txt" | Select -First 4
 
-    if ($counterSuma -ge 2)
+    $counterFlexTXT.Split(" ") | ForEach {
+        $counterFlex = $_
+     }
+     $counterTypeCTXT.Split(" ") | ForEach {
+        $counterTypeC = $_
+     }
+     $counterCableTXT.Split(" ") | ForEach {
+        $counterCable = $_
+     }
+    
+    $counterSumaFlex   = [int]$counterFlex + 1
+    $counterSumaTypeC  = [int]$counterTypeC + 1
+    $counterSumaCable  = [int]$counterCable + 1
+
+    Remove-Item -Path "Counter WTBT.txt"
+    Add-Content -Path "Counter WTBT.txt" -Value "***COUNTER WTBT***"
+
+    #cable Flex
+    if ($counterSumaFlex -ge 5)
+    {
+        $msgResp = [System.Windows.MessageBox]::Show('El cable Flex a llegado a su limite de usos, ¿Desea remplazarlo?', 'ADVERTENCIA', 'YesNo','warning')
+        
+        switch ($msgResp)
+        {
+            'Yes' 
+            {
+                $counterFlexTXT = "Counter Flex:   0"
+    	        Add-Content -Path "Counter WTBT.txt" -Value $counterFlexTXT
+            }
+            'No' 
+            {
+    	        $counterFlexTXT = "Counter Flex:   $counterSumaFlex"
+    	        Add-Content -Path "Counter WTBT.txt" -Value $counterFlexTXT
+            }
+        }
+    }
+    else
+    {
+        $counterFlexTXT = "Counter Flex:   $counterSumaFlex"
+        Add-Content -Path "Counter WTBT.txt" -Value $counterFlexTXT
+    }
+
+    #Cable Tipo C
+    if ($counterSumaTypeC -ge 7)
+    {
+        $msgResp = [System.Windows.MessageBox]::Show('El cable tipo C a llegado a su limite de usos, ¿Desea remplazarlo?', 'ADVERTENCIA', 'YesNo','warning')
+        
+        switch ($msgResp)
+        {
+            'Yes' 
+            {
+    	        $counterTypeCTXT = "Counter Type C: 0"
+    	        Add-Content -Path "Counter WTBT.txt" -Value $counterTypeCTXT
+            }
+            'No' 
+            {
+    	        $counterTypeCTXT = "Counter Type C: $counterSumaTypeC"
+    	        Add-Content -Path "Counter WTBT.txt" -Value $counterTypeCTXT
+            }
+        }
+    }
+    else
+    {
+        $counterTypeCTXT = "Counter Type C: $counterSumaTypeC"
+    	Add-Content -Path "Counter WTBT.txt" -Value $counterTypeCTXT
+    }
+
+    #Cable 
+    if ($counterSumaCable -ge 3)
     {
         $msgResp = [System.Windows.MessageBox]::Show('El cable a llegado a su limite de usos, ¿Desea remplazarlo?', 'ADVERTENCIA', 'YesNo','warning')
         
@@ -55,18 +125,24 @@ function Counter
         {
             'Yes' 
             {
-    	        Set-Content -Path counter.txt -Value 0
+    	        $counterCableTXT = "Counter Cable:  0"
+    	        Add-Content -Path "Counter WTBT.txt" -Value $counterCableTXT
             }
             'No' 
             {
-    	        Set-Content -Path counter.txt -Value $counterSuma
+    	        $counterCableTXT = "Counter Cable:  $counterSumaCable"
+    	        Add-Content -Path "Counter WTBT.txt" -Value $counterCableTXT
             }
         }
     }
     else
     {
-        Set-Content -Path counter.txt -Value $counterSuma
+        $counterCableTXT = "Counter Cable:  $counterSumaCable"
+    	Add-Content -Path "Counter WTBT.txt" -Value $counterCableTXT
     }
+
+    $counterResp = Get-Content "Counter WTBT.txt"
+    Set-Content -Path "Counter WTBT RESP.txt" -Value $counterResp
 }
 
 Register-WmiEvent -Class Win32_DeviceChangeEvent -SourceIdentifier DeviceChangeEvent
@@ -102,7 +178,7 @@ do
             cmd.exe /c devcon hwids * > ids.txt
             Start-Sleep -Seconds 1
             connect
-            $conect = 1
+            $connect = 1
             $inirialConnect = 1
         }
     }
@@ -124,15 +200,15 @@ do
             if($LINE -eq "    Name: Mouse compatible con HID")
             {
                 Write-Output "Device is still connected"
-                $conect = 1
+                $connect = 1
                 Break
             }
             else
             {
-                $conect = 0
+                $connect = 0
             }
         }
-        if ($conect -eq 0)
+        if ($connect -eq 0)
         {
             Write-Output "The device has been disconnected"
         }
@@ -145,5 +221,5 @@ do
     while (1-eq1) #Loop until next event
 
     Unregister-Event -SourceIdentifier DeviceChangeEvent
-}
+#}
 
